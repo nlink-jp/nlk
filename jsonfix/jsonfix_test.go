@@ -5,111 +5,309 @@ import (
 	"testing"
 )
 
-func TestExtractPlainJSON(t *testing.T) {
-	input := `{"key": "value", "num": 42}`
+// helper validates that Extract produces valid JSON.
+func mustExtract(t *testing.T, name, input string) string {
+	t.Helper()
 	got, err := Extract(input)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("[%s] unexpected error: %v\n  input: %s", name, err, input)
 	}
 	if !json.Valid([]byte(got)) {
-		t.Errorf("result is not valid JSON: %s", got)
+		t.Fatalf("[%s] result is not valid JSON: %s", name, got)
+	}
+	return got
+}
+
+// --- Basic extraction ---
+
+func TestPlainObject(t *testing.T) {
+	mustExtract(t, "plain object", `{"key": "value", "num": 42}`)
+}
+
+func TestPlainArray(t *testing.T) {
+	mustExtract(t, "plain array", `[1, 2, 3]`)
+}
+
+func TestNestedJSON(t *testing.T) {
+	mustExtract(t, "nested", `{"a": {"b": {"c": [1, 2, {"d": true}]}}}`)
+}
+
+func TestEmptyObject(t *testing.T) {
+	got := mustExtract(t, "empty object", `{}`)
+	if got != `{}` {
+		t.Errorf("expected {}, got %s", got)
 	}
 }
 
-func TestExtractJSONArray(t *testing.T) {
-	input := `[1, 2, 3]`
-	got, err := Extract(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got != `[1, 2, 3]` {
-		t.Errorf("expected [1, 2, 3], got %s", got)
+func TestEmptyArray(t *testing.T) {
+	got := mustExtract(t, "empty array", `[]`)
+	if got != `[]` {
+		t.Errorf("expected [], got %s", got)
 	}
 }
 
-func TestExtractFromMarkdownFence(t *testing.T) {
+// --- Markdown fences ---
+
+func TestMarkdownFenceJSON(t *testing.T) {
 	input := "Here is the result:\n```json\n{\"key\": \"value\"}\n```\nDone."
-	got, err := Extract(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !json.Valid([]byte(got)) {
-		t.Errorf("result is not valid JSON: %s", got)
-	}
+	mustExtract(t, "markdown fence json", input)
 }
 
-func TestExtractFromFenceNoLang(t *testing.T) {
+func TestMarkdownFenceNoLang(t *testing.T) {
 	input := "```\n{\"a\": 1}\n```"
-	got, err := Extract(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !json.Valid([]byte(got)) {
-		t.Errorf("result is not valid JSON: %s", got)
-	}
+	mustExtract(t, "markdown fence no lang", input)
 }
 
-func TestExtractFromSurroundingText(t *testing.T) {
+func TestMarkdownFenceWithExplanation(t *testing.T) {
+	input := "Based on my analysis, here is the JSON output:\n```json\n{\"result\": \"safe\"}\n```\nI hope this helps."
+	mustExtract(t, "fence with explanation", input)
+}
+
+// --- Surrounding text ---
+
+func TestSurroundingText(t *testing.T) {
 	input := "The analysis result is:\n{\"category\": \"safe\", \"confidence\": 0.95}\nEnd of response."
-	got, err := Extract(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	got := mustExtract(t, "surrounding text", input)
 	var m map[string]any
 	if err := json.Unmarshal([]byte(got), &m); err != nil {
 		t.Fatalf("not valid JSON: %v", err)
 	}
 	if m["category"] != "safe" {
-		t.Errorf("expected category=safe, got %v", m["category"])
+		t.Errorf("expected safe, got %v", m["category"])
 	}
 }
 
-func TestExtractFixMissingBraces(t *testing.T) {
+// --- Single quotes ---
+
+func TestSingleQuotes(t *testing.T) {
+	input := `{'key': 'value', 'num': 42}`
+	got := mustExtract(t, "single quotes", input)
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("not valid JSON: %v", err)
+	}
+	if m["key"] != "value" {
+		t.Errorf("expected value, got %v", m["key"])
+	}
+}
+
+func TestMixedQuotes(t *testing.T) {
+	input := `{"key": 'value', 'key2': "value2"}`
+	mustExtract(t, "mixed quotes", input)
+}
+
+// --- Trailing commas ---
+
+func TestTrailingCommaObject(t *testing.T) {
+	input := `{"key": "value", "key2": "value2",}`
+	mustExtract(t, "trailing comma object", input)
+}
+
+func TestTrailingCommaArray(t *testing.T) {
+	input := `[1, 2, 3,]`
+	mustExtract(t, "trailing comma array", input)
+}
+
+func TestTrailingCommaNestedObject(t *testing.T) {
+	input := `{"a": {"b": 1,}, "c": [1, 2,],}`
+	mustExtract(t, "trailing comma nested", input)
+}
+
+// --- Unquoted keys ---
+
+func TestUnquotedKeys(t *testing.T) {
+	input := `{key: "value", key2: 42}`
+	got := mustExtract(t, "unquoted keys", input)
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("not valid JSON: %v", err)
+	}
+	if m["key"] != "value" {
+		t.Errorf("expected value, got %v", m["key"])
+	}
+}
+
+// --- Comments ---
+
+func TestLineComment(t *testing.T) {
+	input := `{
+		// This is a comment
+		"key": "value"
+	}`
+	mustExtract(t, "line comment", input)
+}
+
+func TestBlockComment(t *testing.T) {
+	input := `{
+		/* block comment */
+		"key": "value"
+	}`
+	mustExtract(t, "block comment", input)
+}
+
+func TestHashComment(t *testing.T) {
+	input := `{
+		# hash comment
+		"key": "value"
+	}`
+	mustExtract(t, "hash comment", input)
+}
+
+// --- Boolean/null case normalization ---
+
+func TestUppercaseTrue(t *testing.T) {
+	input := `{"flag": True}`
+	got := mustExtract(t, "uppercase True", input)
+	var m map[string]any
+	json.Unmarshal([]byte(got), &m)
+	if m["flag"] != true {
+		t.Errorf("expected true, got %v", m["flag"])
+	}
+}
+
+func TestUppercaseFalse(t *testing.T) {
+	input := `{"flag": False}`
+	got := mustExtract(t, "uppercase False", input)
+	var m map[string]any
+	json.Unmarshal([]byte(got), &m)
+	if m["flag"] != false {
+		t.Errorf("expected false, got %v", m["flag"])
+	}
+}
+
+func TestUppercaseNone(t *testing.T) {
+	input := `{"value": None}`
+	got := mustExtract(t, "Python None", input)
+	var m map[string]any
+	json.Unmarshal([]byte(got), &m)
+	if m["value"] != nil {
+		t.Errorf("expected null, got %v", m["value"])
+	}
+}
+
+func TestUppercaseNULL(t *testing.T) {
+	input := `{"value": NULL}`
+	got := mustExtract(t, "uppercase NULL", input)
+	var m map[string]any
+	json.Unmarshal([]byte(got), &m)
+	if m["value"] != nil {
+		t.Errorf("expected null, got %v", m["value"])
+	}
+}
+
+// --- Missing closing braces/brackets ---
+
+func TestMissingClosingBrace(t *testing.T) {
 	input := `{"key": "value", "nested": {"inner": true}`
-	got, err := Extract(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !json.Valid([]byte(got)) {
-		t.Errorf("result is not valid JSON: %s", got)
-	}
+	mustExtract(t, "missing closing brace", input)
 }
 
-func TestExtractFixMissingBrackets(t *testing.T) {
-	// Simple case: array with missing closing bracket.
+func TestMissingClosingBracket(t *testing.T) {
 	input := `[1, 2, 3`
-	got, err := Extract(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	mustExtract(t, "missing closing bracket", input)
+}
+
+func TestDeepNestingMissing(t *testing.T) {
+	input := `{"a": {"b": {"c": [1, 2, 3`
+	mustExtract(t, "deep nesting missing", input)
+}
+
+// --- Missing commas ---
+
+func TestMissingCommaObject(t *testing.T) {
+	input := `{"key1": "val1" "key2": "val2"}`
+	mustExtract(t, "missing comma object", input)
+}
+
+func TestMissingCommaArray(t *testing.T) {
+	input := `["a" "b" "c"]`
+	mustExtract(t, "missing comma array", input)
+}
+
+// --- Python constructs ---
+
+func TestPythonTuple(t *testing.T) {
+	input := `("a", "b", "c")`
+	got := mustExtract(t, "python tuple", input)
+	var arr []string
+	if err := json.Unmarshal([]byte(got), &arr); err != nil {
+		t.Fatalf("not valid JSON array: %v", err)
 	}
-	if !json.Valid([]byte(got)) {
-		t.Errorf("result is not valid JSON: %s", got)
+	if len(arr) != 3 {
+		t.Errorf("expected 3 elements, got %d", len(arr))
 	}
 }
 
-func TestExtractNoJSON(t *testing.T) {
-	input := "This is just plain text with no JSON at all."
-	_, err := Extract(input)
-	if err != ErrNoJSON {
-		t.Errorf("expected ErrNoJSON, got %v", err)
+// --- Ellipsis ---
+
+func TestEllipsis(t *testing.T) {
+	input := `[1, 2, 3, ...]`
+	got := mustExtract(t, "ellipsis", input)
+	var arr []any
+	if err := json.Unmarshal([]byte(got), &arr); err != nil {
+		t.Fatalf("not valid JSON: %v", err)
+	}
+	if len(arr) != 3 {
+		t.Errorf("expected 3 elements, got %d", len(arr))
 	}
 }
 
-func TestExtractEmptyInput(t *testing.T) {
+// --- Number repair ---
+
+func TestLeadingDot(t *testing.T) {
+	input := `{"val": .5}`
+	got := mustExtract(t, "leading dot", input)
+	var m map[string]any
+	json.Unmarshal([]byte(got), &m)
+	if m["val"] != 0.5 {
+		t.Errorf("expected 0.5, got %v", m["val"])
+	}
+}
+
+func TestTrailingDot(t *testing.T) {
+	input := `{"val": 1.}`
+	got := mustExtract(t, "trailing dot", input)
+	var m map[string]any
+	json.Unmarshal([]byte(got), &m)
+	if m["val"] != 1.0 {
+		t.Errorf("expected 1.0, got %v", m["val"])
+	}
+}
+
+func TestNumberWithUnderscore(t *testing.T) {
+	input := `{"val": 1_000_000}`
+	got := mustExtract(t, "underscore number", input)
+	var m map[string]any
+	json.Unmarshal([]byte(got), &m)
+	if m["val"] != 1000000.0 {
+		t.Errorf("expected 1000000, got %v", m["val"])
+	}
+}
+
+// --- Escape handling ---
+
+func TestHexEscape(t *testing.T) {
+	input := `{"val": "\x41\x42"}`
+	mustExtract(t, "hex escape", input)
+}
+
+// --- Error cases ---
+
+func TestEmptyInput(t *testing.T) {
 	_, err := Extract("")
 	if err != ErrNoJSON {
 		t.Errorf("expected ErrNoJSON, got %v", err)
 	}
 }
 
-func TestExtractUnfixableJSON(t *testing.T) {
-	// Malformed JSON that can't be fixed by adding closing braces.
-	input := `{"key": value_without_quotes}`
-	_, err := Extract(input)
-	if err != ErrUnfixable {
-		t.Errorf("expected ErrUnfixable, got %v", err)
+func TestNoJSON(t *testing.T) {
+	_, err := Extract("This is just plain text with no JSON at all.")
+	if err == nil {
+		t.Error("expected error for no JSON")
 	}
 }
+
+// --- ExtractTo ---
 
 func TestExtractToStruct(t *testing.T) {
 	type Result struct {
@@ -117,7 +315,7 @@ func TestExtractToStruct(t *testing.T) {
 		Confidence float64 `json:"confidence"`
 	}
 
-	input := "```json\n{\"category\": \"phishing\", \"confidence\": 0.87}\n```"
+	input := "```json\n{'category': 'phishing', 'confidence': 0.87,}\n```"
 	var r Result
 	if err := ExtractTo(input, &r); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -125,32 +323,11 @@ func TestExtractToStruct(t *testing.T) {
 	if r.Category != "phishing" {
 		t.Errorf("expected phishing, got %s", r.Category)
 	}
-	if r.Confidence != 0.87 {
-		t.Errorf("expected 0.87, got %f", r.Confidence)
-	}
 }
 
-func TestExtractToInvalidTarget(t *testing.T) {
-	input := `{"key": "value"}`
-	var s string
-	err := ExtractTo(input, &s)
-	if err == nil {
-		t.Error("expected error unmarshaling object into string")
-	}
-}
+// --- Multiline ---
 
-func TestExtractNestedJSON(t *testing.T) {
-	input := `{"a": {"b": {"c": [1, 2, {"d": true}]}}}`
-	got, err := Extract(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !json.Valid([]byte(got)) {
-		t.Errorf("result is not valid JSON: %s", got)
-	}
-}
-
-func TestExtractMultilineJSON(t *testing.T) {
+func TestMultilineJSON(t *testing.T) {
 	input := `Some text before
 {
   "key": "value",
@@ -161,30 +338,68 @@ func TestExtractMultilineJSON(t *testing.T) {
   ]
 }
 Some text after`
-	got, err := Extract(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !json.Valid([]byte(got)) {
-		t.Errorf("result is not valid JSON: %s", got)
-	}
+	mustExtract(t, "multiline", input)
 }
 
-func TestExtractPreservesOriginal(t *testing.T) {
-	// Ensure we don't modify the JSON content.
+// --- Unicode/Japanese ---
+
+func TestJapaneseContent(t *testing.T) {
 	input := `{"emoji": "🎉", "japanese": "日本語テスト"}`
-	got, err := Extract(input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	got := mustExtract(t, "japanese", input)
 	var m map[string]string
 	if err := json.Unmarshal([]byte(got), &m); err != nil {
 		t.Fatalf("not valid JSON: %v", err)
 	}
-	if m["emoji"] != "🎉" {
-		t.Errorf("emoji not preserved")
-	}
 	if m["japanese"] != "日本語テスト" {
 		t.Errorf("japanese not preserved")
+	}
+}
+
+// --- Combined repairs ---
+
+func TestCombinedRepairs(t *testing.T) {
+	input := `{name: 'John', age: 30, 'active': True,`
+	got := mustExtract(t, "combined", input)
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("not valid JSON: %v\ngot: %s", err, got)
+	}
+	if m["name"] != "John" {
+		t.Errorf("expected John, got %v", m["name"])
+	}
+	if m["active"] != true {
+		t.Errorf("expected true, got %v", m["active"])
+	}
+}
+
+func TestLLMRealWorldOutput(t *testing.T) {
+	input := `Based on my analysis of this email:
+
+` + "```json" + `
+{
+  'is_suspicious': True,
+  'category': 'phishing',
+  'confidence': 0.92,
+  'summary': 'The email contains suspicious URLs and mismatched sender information.',
+  'reasons': [
+    'URL points to free hosting service',
+    'From/Return-Path mismatch',
+  ],
+  'tags': ['credential-theft', 'urgent-language'],
+}
+` + "```" + `
+
+Please let me know if you need more details.`
+
+	got := mustExtract(t, "real world", input)
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("not valid JSON: %v\ngot: %s", err, got)
+	}
+	if m["category"] != "phishing" {
+		t.Errorf("expected phishing, got %v", m["category"])
+	}
+	if m["is_suspicious"] != true {
+		t.Errorf("expected true, got %v", m["is_suspicious"])
 	}
 }

@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.3.1 (2026-04-11)
+
+### Fixes
+
+- `jsonfix`: handle unescaped double quotes inside JSON strings using look-ahead heuristic
+- jsonfix coverage improved to 94.2%
+
+### Tests
+
+- Added tests for unescaped inner quotes, truncated input, EOF edge cases, unquoted values with code fences
+
 ## v0.3.0 (2026-04-11)
 
 ### New Packages

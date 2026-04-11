@@ -1,7 +1,11 @@
 package jsonfix
 
 // Recursive descent JSON parser with repair capabilities.
-// Inspired by Python's json-repair, adapted for Go.
+// Inspired by Python's json-repair (https://github.com/mangiucugna/json_repair).
+//
+// json-repair is Copyright (c) 2023 Stefano Baccianella, licensed under the MIT License.
+// This implementation is written from scratch in Go, not a direct translation,
+// but the repair heuristics and supported case list were informed by json-repair.
 //
 // The parser walks the input character by character following JSON BNF grammar.
 // When it encounters invalid syntax, it applies heuristic repairs:

@@ -37,7 +37,8 @@ nlk/
 │   ├── validate.go
 │   └── validate_test.go
 ├── docs/
-│   └── design/      # RFP, reference manual
+│   ├── en/          # English docs (RFP, reference manual)
+│   └── ja/          # Japanese docs (*.ja.md suffix)
 ├── go.mod
 ├── README.md
 ├── README.ja.md

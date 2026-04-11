@@ -14,7 +14,7 @@ A toolbox of small, independent packages for the code that surrounds LLM API cal
 | [`strip`](strip/) | Remove LLM thinking/reasoning tags (DeepSeek, Qwen, Gemma 4, etc.) |
 | [`validate`](validate/) | Rule-based LLM output validation framework |
 
-See the [Reference Manual](docs/design/reference.md) for full API documentation.
+See the [Reference Manual](docs/en/reference.md) for full API documentation.
 
 ## Install
 

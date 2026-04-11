@@ -9,8 +9,11 @@ A toolbox of small, independent packages for the code that surrounds LLM API cal
 | Package | Description |
 |---------|-------------|
 | [`guard`](guard/) | Nonce-tagged XML wrapping for prompt injection defense |
-| [`jsonfix`](jsonfix/) | Extract and repair JSON from LLM output (markdown fences, truncated JSON) |
+| [`jsonfix`](jsonfix/) | Recursive descent JSON parser with repair — handles single quotes, trailing commas, comments, unquoted keys, and more |
 | [`backoff`](backoff/) | Exponential backoff duration calculation with jitter |
+| [`validate`](validate/) | Rule-based LLM output validation framework |
+
+See the [Reference Manual](docs/design/reference.md) for full API documentation.
 
 ## Install
 
@@ -74,11 +77,11 @@ time.Sleep(bo.Duration(attempt))
 - **Zero external dependencies** — standard library only, supply chain safe
 - **Pure functions, stateless** — no side effects, easy to test
 
-## Planned (Phase 2)
+## Planned
 
-- `prompt` — prompt template construction
-- `validate` — validation function execution framework
 - LLM thinking/reasoning tag handling in jsonfix (pending model-specific research)
+- jsonfix: unescaped inner quote repair (context-dependent heuristics)
+- Existing tool migration validation (mail-analyzer, gem-cli)
 
 ## License
 

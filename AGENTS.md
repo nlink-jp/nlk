@@ -23,14 +23,18 @@ nlk/
 ├── guard/           # Nonce-tagged XML wrapping (prompt injection defense)
 │   ├── guard.go
 │   └── guard_test.go
-├── jsonfix/         # JSON extraction and repair from LLM output
-│   ├── jsonfix.go
+├── jsonfix/         # Recursive descent JSON parser with repair
+│   ├── jsonfix.go   # Public API (Extract, ExtractTo)
+│   ├── parser.go    # Recursive descent parser
 │   └── jsonfix_test.go
 ├── backoff/         # Exponential backoff duration calculation
 │   ├── backoff.go
 │   └── backoff_test.go
+├── validate/        # Rule-based LLM output validation
+│   ├── validate.go
+│   └── validate_test.go
 ├── docs/
-│   └── design/      # RFP and design documents
+│   └── design/      # RFP, reference manual
 ├── go.mod
 ├── README.md
 ├── README.ja.md

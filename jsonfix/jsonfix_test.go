@@ -579,6 +579,57 @@ func TestUnquotedLiteralFallback(t *testing.T) {
 	}
 }
 
+// --- Escaped JSON ---
+
+func TestEscapedJSON(t *testing.T) {
+	input := `{\"key\": \"value\", \"num\": 42}`
+	got := mustExtract(t, "escaped JSON", input)
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("not valid JSON: %v\ngot: %s", err, got)
+	}
+	if m["key"] != "value" {
+		t.Errorf("expected value, got %v", m["key"])
+	}
+	if m["num"] != 42.0 {
+		t.Errorf("expected 42, got %v", m["num"])
+	}
+}
+
+func TestEscapedJSONNested(t *testing.T) {
+	input := `{\"outer\": {\"inner\": [1, 2, 3]}}`
+	got := mustExtract(t, "escaped nested", input)
+	if !json.Valid([]byte(got)) {
+		t.Fatalf("result is not valid JSON: %s", got)
+	}
+}
+
+func TestEscapedJSONWithNewlines(t *testing.T) {
+	input := `{\"key\": \"line1\\nline2\"}`
+	got := mustExtract(t, "escaped with newlines", input)
+	if !json.Valid([]byte(got)) {
+		t.Fatalf("result is not valid JSON: %s", got)
+	}
+}
+
+func TestEscapedJSONInText(t *testing.T) {
+	input := "The result is: {\\\"category\\\": \\\"safe\\\", \\\"confidence\\\": 0.9}"
+	got := mustExtract(t, "escaped in text", input)
+	if !json.Valid([]byte(got)) {
+		t.Fatalf("result is not valid JSON: %s", got)
+	}
+}
+
+func TestNormalJSONNotAffectedByUnescape(t *testing.T) {
+	// Normal JSON with escaped quotes inside strings should NOT be double-unescaped.
+	input := `{"msg": "He said \"hello\""}`
+	got := mustExtract(t, "normal escaped quotes", input)
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("not valid JSON: %v\ngot: %s", err, got)
+	}
+}
+
 // --- Real-world LLM outputs ---
 
 func TestLLMRealWorldOutput(t *testing.T) {

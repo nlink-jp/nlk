@@ -18,6 +18,7 @@ package jsonfix
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 )
 
 var (
@@ -38,6 +39,28 @@ func Extract(input string) (string, error) {
 		return "", ErrNoJSON
 	}
 
+	// Try the input as-is first.
+	result, err := tryParse(input)
+	if err == nil {
+		return result, nil
+	}
+
+	// If the input looks like escaped JSON (\"), unescape and retry.
+	if strings.Contains(input, `\"`) {
+		unescaped := unescapeJSON(input)
+		if unescaped != input {
+			result, err = tryParse(unescaped)
+			if err == nil {
+				return result, nil
+			}
+		}
+	}
+
+	return "", err
+}
+
+// tryParse runs the repair parser and validates the result.
+func tryParse(input string) (string, error) {
 	p := newParser(input)
 	result := p.repair()
 
@@ -45,12 +68,50 @@ func Extract(input string) (string, error) {
 		return "", ErrNoJSON
 	}
 
-	// Validate the repaired output.
 	if !json.Valid([]byte(result)) {
 		return "", ErrUnfixable
 	}
 
 	return result, nil
+}
+
+// unescapeJSON detects and unescapes double-escaped JSON strings.
+// Handles: \" → ", \\ → \, \n → newline, \t → tab.
+func unescapeJSON(input string) string {
+	// Only unescape if the pattern looks like escaped JSON.
+	// Check for \" adjacent to structural characters.
+	if !strings.Contains(input, `{\"`) && !strings.Contains(input, `[\"`) {
+		return input
+	}
+
+	var b strings.Builder
+	b.Grow(len(input))
+	runes := []rune(input)
+
+	for i := 0; i < len(runes); i++ {
+		if runes[i] == '\\' && i+1 < len(runes) {
+			next := runes[i+1]
+			switch next {
+			case '"':
+				b.WriteRune('"')
+				i++
+			case '\\':
+				b.WriteRune('\\')
+				i++
+			case 'n':
+				b.WriteRune('\n')
+				i++
+			case 't':
+				b.WriteRune('\t')
+				i++
+			default:
+				b.WriteRune(runes[i])
+			}
+		} else {
+			b.WriteRune(runes[i])
+		}
+	}
+	return b.String()
 }
 
 // ExtractTo extracts and repairs JSON from input, then unmarshals into target.

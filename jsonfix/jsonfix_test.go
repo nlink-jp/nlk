@@ -389,6 +389,36 @@ func TestEscapedInnerQuote(t *testing.T) {
 	}
 }
 
+func TestUnescapedInnerQuote(t *testing.T) {
+	input := `{"msg": "lorem "ipsum" dolor"}`
+	got := mustExtract(t, "unescaped inner quote", input)
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("not valid JSON: %v\ngot: %s", err, got)
+	}
+}
+
+func TestUnescapedQuoteWithFollowingKey(t *testing.T) {
+	input := `{"a": "he said "hello" to me", "b": 1}`
+	got := mustExtract(t, "unescaped quote with following key", input)
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("not valid JSON: %v\ngot: %s", err, got)
+	}
+	if m["b"] != 1.0 {
+		t.Errorf("expected b=1, got %v", m["b"])
+	}
+}
+
+func TestUnescapedQuoteLastValue(t *testing.T) {
+	input := `{"x": "value with "quotes" inside"}`
+	got := mustExtract(t, "unescaped quote last value", input)
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("not valid JSON: %v\ngot: %s", err, got)
+	}
+}
+
 func TestNewlineInString(t *testing.T) {
 	// Newline inside a string should close it.
 	input := "{\"key\": \"unterminated\n, \"key2\": \"val2\"}"
@@ -495,6 +525,57 @@ func TestExtractToNoJSON(t *testing.T) {
 	err := ExtractTo("no json here at all", &m)
 	if err == nil {
 		t.Error("expected error")
+	}
+}
+
+// --- Real-world LLM outputs ---
+
+// --- Edge cases: truncated/EOF ---
+
+func TestTruncatedObject(t *testing.T) {
+	input := `{"key": "val`
+	mustExtract(t, "truncated object", input)
+}
+
+func TestTruncatedString(t *testing.T) {
+	input := `{"key": "unterminated`
+	mustExtract(t, "truncated string", input)
+}
+
+func TestTruncatedEscape(t *testing.T) {
+	input := `{"key": "value\`
+	mustExtract(t, "truncated escape", input)
+}
+
+func TestUnquotedValueWithFence(t *testing.T) {
+	// Unquoted value ending with a code fence marker.
+	input := "{\"key\": somevalue```}"
+	mustExtract(t, "unquoted with fence", input)
+}
+
+func TestOnlyOpenBrace(t *testing.T) {
+	input := `{`
+	got := mustExtract(t, "only open brace", input)
+	if got != `{}` {
+		t.Errorf("expected {}, got %s", got)
+	}
+}
+
+func TestOnlyOpenBracket(t *testing.T) {
+	input := `[`
+	got := mustExtract(t, "only open bracket", input)
+	if got != `[]` {
+		t.Errorf("expected [], got %s", got)
+	}
+}
+
+func TestUnquotedLiteralFallback(t *testing.T) {
+	// Starts with 't' but not "true".
+	input := `{"key": test_value}`
+	got := mustExtract(t, "literal fallback", input)
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("not valid JSON: %v\ngot: %s", err, got)
 	}
 }
 

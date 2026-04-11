@@ -381,13 +381,6 @@ func (p *parser) parseString(quote rune) {
 	for !p.atEnd() {
 		ch := p.peek()
 
-		// Closing quote.
-		if ch == quote {
-			p.advance()
-			p.emit('"')
-			return
-		}
-
 		// Newline inside string — close it.
 		if ch == '\n' || ch == '\r' {
 			p.emit('"')
@@ -429,23 +422,25 @@ func (p *parser) parseString(quote rune) {
 			continue
 		}
 
-		// If we're in a double-quoted string and encounter an unescaped double quote
-		// that's not the closing quote, escape it.
-		if quote == '"' && ch == '"' {
-			// Look ahead to see if this is really the end.
-			// If next non-space char is : , } ] or EOF, it's the real end.
+		// Quote character — determine if it's the closing quote or an
+		// unescaped internal quote that needs escaping.
+		if ch == quote {
+			// Look ahead: if the next non-space char is a JSON structural
+			// character (: , } ]) or EOF, this is the real closing quote.
 			next := p.peekAheadSkipSpace(1)
 			if next == ':' || next == ',' || next == '}' || next == ']' || next == 0 {
 				p.advance()
 				p.emit('"')
 				return
 			}
-			// Otherwise, escape it.
+			// Otherwise, it's an internal unescaped quote — escape it.
 			p.advance()
 			p.emitString(`\"`)
 			continue
 		}
 
+		// For single-quoted strings, a double quote inside doesn't need escaping.
+		// For double-quoted strings, this path handles non-quote characters.
 		p.emit(p.advance())
 	}
 

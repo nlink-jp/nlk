@@ -55,5 +55,8 @@ nlk/
 ## Gotchas
 
 - `guard.NewTag()` panics if crypto/rand fails (should never happen in practice)
-- `jsonfix.Extract()` uses greedy regex — picks the largest JSON match
-- `backoff.Duration()` uses math/rand (not crypto/rand) — fine for jitter timing
+- `guard` uses 128-bit nonces (16 bytes) to prevent brute-force tag guessing
+- `jsonfix.Extract()` loads full input into memory — callers should limit input size
+- `jsonfix` parser is inspired by Python json-repair (MIT, Stefano Baccianella) — see LICENSE
+- `backoff.Duration()` uses math/rand (not crypto/rand) — intentional, fine for jitter
+- `backoff.Duration()` clamps negative attempt values to 0

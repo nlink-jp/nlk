@@ -34,11 +34,11 @@ Represents a nonce-based XML tag for isolating untrusted data.
 
 #### `NewTag() Tag`
 
-Generates a new Tag with prefix `user_data` and 4 random bytes (8 hex chars).
+Generates a new Tag with prefix `user_data` and 16 random bytes (32 hex chars, 128-bit entropy).
 
 ```go
 tag := guard.NewTag()
-// tag.Name() == "user_data_a1b2c3d4"
+// tag.Name() == "user_data_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
 ```
 
 #### `NewTagWithPrefix(prefix string) Tag`
@@ -94,7 +94,8 @@ tag.ExpandPlaceholder("Data is inside <<TAG>>.", "<<TAG>>")
 ### Constants
 
 ```go
-const DefaultPlaceholder = "{{DATA_TAG}}"
+const NonceSize = 16                       // Random bytes for tag nonce (128-bit)
+const DefaultPlaceholder = "{{DATA_TAG}}"  // Placeholder replaced by Tag.Expand
 ```
 
 ### Usage Pattern
@@ -142,6 +143,8 @@ Extracts and repairs JSON from arbitrary text using a recursive descent parser. 
 | Underscore in numbers | `1_000` | → `1000` |
 | Hex escapes | `\x41` | → `\u0041` |
 | Surrounding text | `Result: {...} Done.` | Extract JSON only |
+| Double-escaped JSON | `{\"key\": \"value\"}` | → `{"key": "value"}` |
+| Unescaped inner quotes | `"lorem "ipsum" dolor"` | → `"lorem \"ipsum\" dolor"` |
 
 ### Functions
 
@@ -245,7 +248,7 @@ Returns the wait duration for the given attempt (0-indexed).
 
 Formula: `min(base * 2^attempt, max) + uniform(-jitter, +jitter)`
 
-Result is clamped to a minimum of 0.
+Result is clamped to a minimum of 0. Negative attempt values are treated as 0.
 
 ### Constants
 

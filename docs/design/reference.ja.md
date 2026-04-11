@@ -30,11 +30,11 @@ import "github.com/nlink-jp/nlk/guard"
 
 #### `NewTag() Tag`
 
-プレフィックス `user_data` + ランダム4バイト（16進8文字）でタグを生成。
+プレフィックス `user_data` + ランダム16バイト（16進32文字、128ビットエントロピー）でタグを生成。
 
 ```go
 tag := guard.NewTag()
-// tag.Name() == "user_data_a1b2c3d4"
+// tag.Name() == "user_data_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
 ```
 
 #### `NewTagWithPrefix(prefix string) Tag`
@@ -68,6 +68,13 @@ tag.Wrap("非信頼データ")
 
 カスタムプレースホルダをタグ名に置換。
 
+### 定数
+
+```go
+const NonceSize = 16                       // ノンスのバイト数（128ビット）
+const DefaultPlaceholder = "{{DATA_TAG}}"  // Expandで置換されるプレースホルダ
+```
+
 ### 使用パターン
 
 ```go
@@ -89,6 +96,7 @@ import "github.com/nlink-jp/nlk/jsonfix"
 ```
 
 再帰下降パーサーによるJSON抽出・修復。LLM出力でよくある問題を幅広く処理。
+Python [json-repair](https://github.com/mangiucugna/json_repair)（MIT, Copyright 2023 Stefano Baccianella）の修復ヒューリスティクスを参考に、Goでゼロから実装。
 
 ### 対応する修復
 
@@ -110,6 +118,15 @@ import "github.com/nlink-jp/nlk/jsonfix"
 | アンダースコア数値 | `1_000` | → `1000` |
 | 16進エスケープ | `\x41` | → `\u0041` |
 | 周辺テキスト | `結果: {...} 以上` | JSON部分のみ抽出 |
+| エスケープ済みJSON | `{\"key\": \"value\"}` | → `{"key": "value"}` |
+| 未エスケープ内部クォート | `"lorem "ipsum" dolor"` | → `"lorem \"ipsum\" dolor"` |
+
+### エラー
+
+```go
+var ErrNoJSON = errors.New("jsonfix: no JSON found in input")
+var ErrUnfixable = errors.New("jsonfix: repaired output is not valid JSON")
+```
 
 ### 関数
 
@@ -176,6 +193,16 @@ time.Sleep(backoff.Duration(attempt))
 指定したattempt（0始まり）の待ち時間を返す。
 
 計算式: `min(base × 2^attempt, max) + uniform(-jitter, +jitter)`
+
+attemptが負の場合は0にクランプされる。
+
+### 定数
+
+```go
+const DefaultBase   = 5 * time.Second
+const DefaultMax    = 120 * time.Second
+const DefaultJitter = 1 * time.Second
+```
 
 ### 使用パターン
 

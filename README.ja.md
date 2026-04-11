@@ -61,6 +61,14 @@ for attempt := 0; attempt < 5; attempt++ {
     if err == nil { break }
     time.Sleep(backoff.Duration(attempt))
 }
+
+// カスタム設定
+bo := backoff.New(
+    backoff.WithBase(2*time.Second),
+    backoff.WithMax(60*time.Second),
+    backoff.WithJitter(500*time.Millisecond),
+)
+time.Sleep(bo.Duration(attempt))
 ```
 
 ## 設計方針
@@ -72,7 +80,6 @@ for attempt := 0; attempt < 5; attempt++ {
 
 ## 予定
 
-- jsonfix: 文字列内未エスケープクォートの修復（文脈依存ヒューリスティクス）
 - 既存ツール移行検証（mail-analyzer, gem-cli）
 
 ## ライセンス

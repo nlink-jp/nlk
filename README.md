@@ -80,7 +80,6 @@ time.Sleep(bo.Duration(attempt))
 
 ## Planned
 
-- jsonfix: unescaped inner quote repair (context-dependent heuristics)
 - Existing tool migration validation (mail-analyzer, gem-cli)
 
 ## License

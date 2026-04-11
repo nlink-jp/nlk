@@ -101,6 +101,19 @@ func TestConvenienceFunction(t *testing.T) {
 	}
 }
 
+func TestDurationNegativeAttempt(t *testing.T) {
+	b := New(WithBase(1*time.Second), WithMax(60*time.Second), WithJitter(0))
+	// Negative attempt should be treated as 0.
+	d := b.Duration(-1)
+	if d != 1*time.Second {
+		t.Errorf("negative attempt: expected 1s, got %v", d)
+	}
+	d = b.Duration(-100)
+	if d != 1*time.Second {
+		t.Errorf("very negative attempt: expected 1s, got %v", d)
+	}
+}
+
 func TestDurationExponentialGrowth(t *testing.T) {
 	b := New(WithBase(1*time.Second), WithMax(1000*time.Second), WithJitter(0))
 

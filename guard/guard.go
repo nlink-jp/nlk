@@ -26,16 +26,20 @@ type Tag struct {
 	name string
 }
 
+// NonceSize is the number of random bytes used for tag nonces.
+// 16 bytes = 128 bits of entropy, sufficient to prevent brute-force guessing.
+const NonceSize = 16
+
 // NewTag generates a new Tag with a cryptographically random nonce.
-// The tag name has the form "user_data_{8 hex chars}" (4 random bytes).
+// The tag name has the form "user_data_{32 hex chars}" (16 random bytes).
 func NewTag() Tag {
 	return NewTagWithPrefix("user_data")
 }
 
 // NewTagWithPrefix generates a new Tag with the given prefix and a random nonce.
-// The tag name has the form "{prefix}_{8 hex chars}".
+// The tag name has the form "{prefix}_{32 hex chars}".
 func NewTagWithPrefix(prefix string) Tag {
-	b := make([]byte, 4)
+	b := make([]byte, NonceSize)
 	if _, err := rand.Read(b); err != nil {
 		panic(fmt.Sprintf("guard: crypto/rand failed: %v", err))
 	}

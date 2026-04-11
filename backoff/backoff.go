@@ -23,7 +23,7 @@ package backoff
 
 import (
 	"math"
-	"math/rand"
+	"math/rand" // Intentionally not crypto/rand — jitter doesn't need CSPRNG.
 	"time"
 )
 
@@ -79,6 +79,9 @@ func New(opts ...Option) Backoff {
 //
 // The result is clamped to a minimum of 0.
 func (b Backoff) Duration(attempt int) time.Duration {
+	if attempt < 0 {
+		attempt = 0
+	}
 	exp := math.Pow(2, float64(attempt))
 	delay := time.Duration(float64(b.base) * exp)
 	if delay > b.max {

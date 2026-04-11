@@ -10,10 +10,10 @@ func TestNewTag(t *testing.T) {
 	if !strings.HasPrefix(tag.Name(), "user_data_") {
 		t.Errorf("expected prefix user_data_, got %s", tag.Name())
 	}
-	// 8 hex chars after prefix
+	// 32 hex chars after prefix (16 bytes = 128 bits)
 	suffix := strings.TrimPrefix(tag.Name(), "user_data_")
-	if len(suffix) != 8 {
-		t.Errorf("expected 8 hex chars, got %d: %s", len(suffix), suffix)
+	if len(suffix) != NonceSize*2 {
+		t.Errorf("expected %d hex chars, got %d: %s", NonceSize*2, len(suffix), suffix)
 	}
 }
 

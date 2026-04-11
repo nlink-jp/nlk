@@ -4,7 +4,7 @@
 //
 // Usage:
 //
-//	errs := validate.Run(result,
+//	err := validate.Run(
 //	    validate.OneOf("category", result.Category, "safe", "phishing", "spam"),
 //	    validate.Range("confidence", result.Confidence, 0, 1),
 //	    validate.MaxLen("tags", len(result.Tags), 5),
@@ -13,7 +13,7 @@
 //	        return nil
 //	    }),
 //	)
-//	if errs != nil {
+//	if err != nil {
 //	    // handle validation errors
 //	}
 package validate

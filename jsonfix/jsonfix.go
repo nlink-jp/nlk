@@ -34,6 +34,9 @@ var (
 // comments, unquoted keys, missing braces, and many other common LLM output issues.
 //
 // Returns the repaired JSON string, or an error if no JSON could be extracted.
+//
+// Note: the input is fully loaded into memory. Callers should limit input size
+// before calling Extract if processing untrusted or unbounded data.
 func Extract(input string) (string, error) {
 	if input == "" {
 		return "", ErrNoJSON

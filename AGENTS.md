@@ -57,6 +57,8 @@ nlk/
 
 - `guard.NewTag()` panics if crypto/rand fails (should never happen in practice)
 - `guard` uses 128-bit nonces (16 bytes) to prevent brute-force tag guessing
+- `guard.Wrap()` returns `(string, error)` — returns `ErrTagCollision` if input contains the tag name
+- `guard.Tag` must be generated per LLM call; reusing across turns is unsafe
 - `jsonfix.Extract()` loads full input into memory — callers should limit input size
 - `jsonfix` parser is inspired by Python json-repair (MIT, Stefano Baccianella) — see LICENSE
 - `backoff.Duration()` uses math/rand (not crypto/rand) — intentional, fine for jitter

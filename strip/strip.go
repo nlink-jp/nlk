@@ -21,6 +21,9 @@ import (
 
 // ThinkTags removes all known thinking/reasoning tag patterns from text.
 //
+// Note: the input is fully loaded into memory. Callers should limit input size
+// before calling ThinkTags if processing untrusted or unbounded data.
+//
 // Supported patterns:
 //   - <think>...</think> (DeepSeek R1, Qwen, Phi-4, most OSS models)
 //   - <thinking>...</thinking>

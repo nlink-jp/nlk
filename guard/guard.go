@@ -4,16 +4,21 @@
 // containing a cryptographic nonce, making it physically distinct from
 // system instructions in the prompt.
 //
+// A new [Tag] must be generated for every LLM call (turn). Reusing the
+// same Tag across multiple turns is unsafe because a previous LLM response
+// may echo the tag name, allowing prompt injection in subsequent turns.
+//
 // Usage:
 //
-//	tag := guard.NewTag()                     // generate random tag
-//	wrapped := tag.Wrap(untrustedData)        // <user_data_a1b2c3d4>...</user_data_a1b2c3d4>
+//	tag := guard.NewTag()                     // generate random tag per turn
+//	wrapped, err := tag.Wrap(untrustedData)   // <user_data_a1b2c3d4>...</user_data_a1b2c3d4>
 //	prompt := tag.Expand(systemPrompt)        // replace {{DATA_TAG}} with tag name
 package guard
 
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -56,9 +61,21 @@ func (t Tag) Name() string {
 	return t.name
 }
 
+// ErrTagCollision is returned by [Tag.Wrap] when the input data contains the
+// tag name. This should never happen under normal usage (128-bit nonce), but
+// the check exists as defense-in-depth.
+var ErrTagCollision = errors.New("guard: input data contains the tag name")
+
 // Wrap encloses data in XML tags: <tagname>data</tagname>.
-func (t Tag) Wrap(data string) string {
-	return "<" + t.name + ">" + data + "</" + t.name + ">"
+//
+// Returns [ErrTagCollision] if data contains the tag name string.
+// This is a defense-in-depth check — with a 128-bit random nonce the
+// probability of accidental collision is negligible.
+func (t Tag) Wrap(data string) (string, error) {
+	if strings.Contains(data, t.name) {
+		return "", ErrTagCollision
+	}
+	return "<" + t.name + ">" + data + "</" + t.name + ">", nil
 }
 
 // Expand replaces DefaultPlaceholder in the template with the tag name.

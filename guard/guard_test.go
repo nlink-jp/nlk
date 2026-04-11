@@ -37,7 +37,10 @@ func TestNewTagUniqueness(t *testing.T) {
 
 func TestWrap(t *testing.T) {
 	tag := NewTagWithName("user_data_deadbeef")
-	got := tag.Wrap("hello world")
+	got, err := tag.Wrap("hello world")
+	if err != nil {
+		t.Fatalf("Wrap returned unexpected error: %v", err)
+	}
 	want := "<user_data_deadbeef>hello world</user_data_deadbeef>"
 	if got != want {
 		t.Errorf("Wrap:\n got: %s\nwant: %s", got, want)
@@ -46,7 +49,10 @@ func TestWrap(t *testing.T) {
 
 func TestWrapEmpty(t *testing.T) {
 	tag := NewTagWithName("t")
-	got := tag.Wrap("")
+	got, err := tag.Wrap("")
+	if err != nil {
+		t.Fatalf("Wrap returned unexpected error: %v", err)
+	}
 	want := "<t></t>"
 	if got != want {
 		t.Errorf("Wrap empty:\n got: %s\nwant: %s", got, want)
@@ -54,14 +60,38 @@ func TestWrapEmpty(t *testing.T) {
 }
 
 func TestWrapSpecialChars(t *testing.T) {
-	tag := NewTagWithName("d")
+	tag := NewTagWithName("user_data_test99")
 	data := "<script>alert('xss')</script>\n\"quotes\" & ampersands"
-	got := tag.Wrap(data)
+	got, err := tag.Wrap(data)
+	if err != nil {
+		t.Fatalf("Wrap returned unexpected error: %v", err)
+	}
 	if !strings.Contains(got, data) {
 		t.Error("Wrap should preserve data verbatim")
 	}
-	if !strings.HasPrefix(got, "<d>") || !strings.HasSuffix(got, "</d>") {
+	if !strings.HasPrefix(got, "<user_data_test99>") || !strings.HasSuffix(got, "</user_data_test99>") {
 		t.Error("Wrap should have correct tags")
+	}
+}
+
+func TestWrapTagCollision(t *testing.T) {
+	tag := NewTagWithName("user_data_deadbeef")
+	data := "some text containing user_data_deadbeef in the middle"
+	_, err := tag.Wrap(data)
+	if err == nil {
+		t.Fatal("Wrap should return error when data contains tag name")
+	}
+	if err != ErrTagCollision {
+		t.Errorf("expected ErrTagCollision, got: %v", err)
+	}
+}
+
+func TestWrapTagCollisionClosingTag(t *testing.T) {
+	tag := NewTagWithName("user_data_deadbeef")
+	data := "injected </user_data_deadbeef> attempt"
+	_, err := tag.Wrap(data)
+	if err == nil {
+		t.Fatal("Wrap should return error when data contains closing tag")
 	}
 }
 

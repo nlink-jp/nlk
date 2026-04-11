@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.5.0 (2026-04-12)
+
+### Security
+
+- **Breaking:** guard: `Wrap()` now returns `(string, error)` — returns `ErrTagCollision` if input data contains the tag name (defense-in-depth)
+- guard: document that Tag must be generated per LLM call (never reuse across turns)
+- jsonfix: add JSON smuggling risk note to `Extract()` doc
+- strip: add input size warning to `ThinkTags()` doc
+
 ## v0.4.0 (2026-04-11)
 
 ### Documentation

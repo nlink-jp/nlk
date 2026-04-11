@@ -37,6 +37,11 @@ var (
 //
 // Note: the input is fully loaded into memory. Callers should limit input size
 // before calling Extract if processing untrusted or unbounded data.
+//
+// Security note: heuristic repairs may produce a JSON structure that differs
+// from the LLM's original intent (JSON smuggling). Always validate the
+// deserialized output — for example with the validate package — before acting
+// on it.
 func Extract(input string) (string, error) {
 	if input == "" {
 		return "", ErrNoJSON

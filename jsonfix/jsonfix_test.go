@@ -372,6 +372,134 @@ func TestCombinedRepairs(t *testing.T) {
 	}
 }
 
+// --- String escape edge cases ---
+
+func TestEscapedQuoteInString(t *testing.T) {
+	input := `{"msg": "He said \"hello\" to me"}`
+	mustExtract(t, "escaped quote", input)
+}
+
+func TestEscapedInnerQuote(t *testing.T) {
+	// Properly escaped inner quote should be preserved.
+	input := `{"msg": "lorem \"ipsum\" dolor"}`
+	got := mustExtract(t, "escaped inner quote", input)
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("not valid JSON: %v\ngot: %s", err, got)
+	}
+}
+
+func TestNewlineInString(t *testing.T) {
+	// Newline inside a string should close it.
+	input := "{\"key\": \"unterminated\n, \"key2\": \"val2\"}"
+	mustExtract(t, "newline in string", input)
+}
+
+func TestUnicodeEscape(t *testing.T) {
+	input := `{"val": "\u0041\u0042"}`
+	got := mustExtract(t, "unicode escape", input)
+	var m map[string]any
+	json.Unmarshal([]byte(got), &m)
+	if m["val"] != "AB" {
+		t.Errorf("expected AB, got %v", m["val"])
+	}
+}
+
+func TestSingleQuoteEscape(t *testing.T) {
+	input := `{"val": "it\'s fine"}`
+	mustExtract(t, "single quote escape", input)
+}
+
+func TestBackslashInString(t *testing.T) {
+	input := `{"path": "C:\\Users\\test"}`
+	mustExtract(t, "backslash in string", input)
+}
+
+// --- Unquoted values ---
+
+func TestUnquotedStringValue(t *testing.T) {
+	input := `{"city": New York, "state": California}`
+	got := mustExtract(t, "unquoted value", input)
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("not valid JSON: %v\ngot: %s", err, got)
+	}
+}
+
+// --- Number edge cases ---
+
+func TestNegativeNumber(t *testing.T) {
+	input := `{"val": -42}`
+	got := mustExtract(t, "negative number", input)
+	var m map[string]any
+	json.Unmarshal([]byte(got), &m)
+	if m["val"] != -42.0 {
+		t.Errorf("expected -42, got %v", m["val"])
+	}
+}
+
+func TestExponent(t *testing.T) {
+	input := `{"val": 1.5e10}`
+	mustExtract(t, "exponent", input)
+}
+
+func TestNegativeExponent(t *testing.T) {
+	input := `{"val": 3.14e-2}`
+	mustExtract(t, "negative exponent", input)
+}
+
+func TestZero(t *testing.T) {
+	input := `{"val": 0}`
+	mustExtract(t, "zero", input)
+}
+
+// --- Literal edge cases ---
+
+func TestLowercaseLiterals(t *testing.T) {
+	input := `{"a": true, "b": false, "c": null}`
+	mustExtract(t, "lowercase literals", input)
+}
+
+func TestMixedCaseTRUE(t *testing.T) {
+	input := `{"a": TRUE, "b": FALSE}`
+	mustExtract(t, "all caps bool", input)
+}
+
+// --- Missing value ---
+
+func TestMissingValueInObject(t *testing.T) {
+	input := `{"key": , "key2": "val"}`
+	mustExtract(t, "missing value", input)
+}
+
+// --- Deeply nested ---
+
+func TestDeeplyNested(t *testing.T) {
+	input := `{"a":{"b":{"c":{"d":{"e":{"f":"deep"}}}}}}`
+	mustExtract(t, "deeply nested", input)
+}
+
+// --- ExtractTo error ---
+
+func TestExtractToInvalidTarget(t *testing.T) {
+	input := `{"key": "value"}`
+	var s string
+	err := ExtractTo(input, &s)
+	if err == nil {
+		t.Error("expected error unmarshaling object into string")
+	}
+}
+
+func TestExtractToNoJSON(t *testing.T) {
+	var m map[string]any
+	err := ExtractTo("no json here at all", &m)
+	if err == nil {
+		t.Error("expected error")
+	}
+}
+
+// --- Real-world LLM outputs ---
+
 func TestLLMRealWorldOutput(t *testing.T) {
 	input := `Based on my analysis of this email:
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.3.2 (2026-04-11)
+
+### Features
+
+- `jsonfix`: handle double-escaped JSON strings (`{\"key\": \"value\"}`)
+
 ## v0.3.1 (2026-04-11)
 
 ### Fixes

@@ -1,6 +1,6 @@
 # nlk リファレンスマニュアル
 
-> バージョン: 0.2.0
+> バージョン: 0.3.0
 
 ## 概要
 
@@ -94,7 +94,7 @@ import "github.com/nlink-jp/nlk/jsonfix"
 
 | 問題 | 例 | 修復 |
 |------|-----|------|
-| Markdownコードフェンス | `` ```json {...} ``` `` | フェンス除��� |
+| Markdownコードフェンス | `` ```json {...} ``` `` | フェンス除去 |
 | シングルクォート | `{'key': 'value'}` | → `{"key": "value"}` |
 | 末尾カンマ | `{"a": 1,}` | → `{"a": 1}` |
 | クォートなしキー | `{key: "value"}` | → `{"key": "value"}` |
@@ -145,7 +145,7 @@ err := jsonfix.ExtractTo(llmOutput, &r)
 import "github.com/nlink-jp/nlk/backoff"
 ```
 
-ジッター付き指���バックオフの待ち時間計算。待ち時間を計算するだけで、スリープやリトライは行わない。
+ジッター付き指数バックオフの待ち時間計算。待ち時間を計算するだけで、スリープやリトライは行わない。
 
 ### 関数
 
@@ -237,7 +237,7 @@ type Rule func() error
 
 任意の検証関数をルールとして作成。
 
-### 使用パターン（mail-analyzer風���
+### 使用パターン（mail-analyzer風）
 
 ```go
 var judgment Judgment
@@ -254,4 +254,57 @@ if err := validate.Run(
 ); err != nil {
     return fmt.Errorf("invalid judgment: %w", err)
 }
+```
+
+---
+
+## パッケージ: strip
+
+```go
+import "github.com/nlink-jp/nlk/strip"
+```
+
+LLMの思考/推論タグを出力から除去する。テキスト応答・JSON応答の両方に対応。クラウドAPI（Claude, Gemini, OpenAI）はAPIレベルで分離されるため不要。ローカル推論・OSSモデル向け。
+
+### 対応タグ形式
+
+| 形式 | モデル |
+|------|--------|
+| `<think>...</think>` | DeepSeek R1, Qwen QwQ/3, Phi-4, 大半のOSS |
+| `<thinking>...</thinking>` | 各種OSSモデル |
+| `<reasoning>...</reasoning>` | 各種OSSモデル |
+| `<reflection>...</reflection>` | 各種OSSモデル |
+| `<\|channel>thought...<channel\|>` | Gemma 4 |
+
+空タグ、閉じタグ欠落（生成途中切れ）、大文字小文字混在にも対応。
+
+### 関数
+
+#### `ThinkTags(text string) string`
+
+既知の全思考/推論タグパターンを除去。
+
+```go
+raw := "<think>\n分析中...\n</think>\n答えは42です。"
+cleaned := strip.ThinkTags(raw)
+// cleaned == "答えは42です。"
+```
+
+#### `Tags(text string, tagNames ...string) string`
+
+カスタムXMLタグペアを除去。非標準タグ名のモデル用。
+
+```go
+cleaned := strip.Tags(raw, "analysis", "internal_notes")
+```
+
+### 使用パターン（jsonfixとの組み合わせ）
+
+```go
+// 1. 思考タグ除去
+cleaned := strip.ThinkTags(llmOutput)
+
+// 2. JSON抽出・修復
+var result MyStruct
+err := jsonfix.ExtractTo(cleaned, &result)
 ```

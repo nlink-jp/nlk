@@ -11,6 +11,7 @@ A toolbox of small, independent packages for the code that surrounds LLM API cal
 | [`guard`](guard/) | Nonce-tagged XML wrapping for prompt injection defense |
 | [`jsonfix`](jsonfix/) | Recursive descent JSON parser with repair — handles single quotes, trailing commas, comments, unquoted keys, and more |
 | [`backoff`](backoff/) | Exponential backoff duration calculation with jitter |
+| [`strip`](strip/) | Remove LLM thinking/reasoning tags (DeepSeek, Qwen, Gemma 4, etc.) |
 | [`validate`](validate/) | Rule-based LLM output validation framework |
 
 See the [Reference Manual](docs/design/reference.md) for full API documentation.
@@ -79,7 +80,6 @@ time.Sleep(bo.Duration(attempt))
 
 ## Planned
 
-- LLM thinking/reasoning tag handling in jsonfix (pending model-specific research)
 - jsonfix: unescaped inner quote repair (context-dependent heuristics)
 - Existing tool migration validation (mail-analyzer, gem-cli)
 

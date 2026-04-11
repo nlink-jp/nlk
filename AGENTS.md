@@ -30,6 +30,9 @@ nlk/
 ├── backoff/         # Exponential backoff duration calculation
 │   ├── backoff.go
 │   └── backoff_test.go
+├── strip/           # LLM thinking/reasoning tag removal
+│   ├── strip.go
+│   └── strip_test.go
 ├── validate/        # Rule-based LLM output validation
 │   ├── validate.go
 │   └── validate_test.go

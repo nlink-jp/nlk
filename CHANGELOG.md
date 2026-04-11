@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.3.0 (2026-04-11)
+
+### New Packages
+
+- `strip` — LLM thinking/reasoning tag removal
+  - `<think>...</think>` (DeepSeek R1, Qwen QwQ/3, Phi-4, most OSS models)
+  - `<thinking>`, `<reasoning>`, `<reflection>` variants
+  - `<|channel>thought...<channel|>` (Gemma 4)
+  - Case-insensitive matching, unclosed tags, empty tags
+  - 100% test coverage
+
+### Documentation
+
+- Reference manual updated with strip package (en/ja)
+- Fixed mojibake in Japanese reference manual
+
 ## v0.2.0 (2026-04-11)
 
 ### New Packages

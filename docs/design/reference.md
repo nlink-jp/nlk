@@ -1,6 +1,6 @@
 # nlk Reference Manual
 
-> Version: 0.2.0
+> Version: 0.3.0
 
 ## Overview
 
@@ -387,4 +387,76 @@ if err := validate.Run(
 ); err != nil {
     return fmt.Errorf("invalid judgment: %w", err)
 }
+```
+
+---
+
+## Package: strip
+
+```go
+import "github.com/nlink-jp/nlk/strip"
+```
+
+Removes LLM thinking/reasoning tags from model output. Works with both text and JSON responses. Cloud APIs (Claude, Gemini, OpenAI) separate thinking at the API level so stripping is not needed; this package is for local inference and OSS models.
+
+### Supported Tag Formats
+
+| Format | Models |
+|--------|--------|
+| `<think>...</think>` | DeepSeek R1, Qwen QwQ/3, Phi-4, most OSS |
+| `<thinking>...</thinking>` | Various OSS models |
+| `<reasoning>...</reasoning>` | Various OSS models |
+| `<reflection>...</reflection>` | Various OSS models |
+| `<\|channel>thought...<channel\|>` | Gemma 4 |
+
+Also handles: empty tags, unclosed tags (truncated output), case-insensitive matching.
+
+### Functions
+
+#### `ThinkTags(text string) string`
+
+Removes all known thinking/reasoning tag patterns.
+
+```go
+raw := "<think>\nLet me analyze...\n</think>\nThe answer is 42."
+cleaned := strip.ThinkTags(raw)
+// cleaned == "The answer is 42."
+```
+
+Unclosed tags (model output was truncated):
+```go
+raw := "<think>\nStill thinking..."
+cleaned := strip.ThinkTags(raw)
+// cleaned == ""
+```
+
+Gemma 4 format:
+```go
+raw := "<|channel>thought\nInternal reasoning\n<channel|>\nFinal answer"
+cleaned := strip.ThinkTags(raw)
+// cleaned == "Final answer"
+```
+
+#### `Tags(text string, tagNames ...string) string`
+
+Removes custom XML-style tag pairs. For models with non-standard tag names.
+
+```go
+cleaned := strip.Tags(raw, "analysis", "internal_notes")
+```
+
+### Usage Pattern (combined with jsonfix)
+
+```go
+import (
+    "github.com/nlink-jp/nlk/strip"
+    "github.com/nlink-jp/nlk/jsonfix"
+)
+
+// 1. Strip thinking tags.
+cleaned := strip.ThinkTags(llmOutput)
+
+// 2. Extract and repair JSON.
+var result MyStruct
+err := jsonfix.ExtractTo(cleaned, &result)
 ```

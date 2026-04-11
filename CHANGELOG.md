@@ -1,5 +1,30 @@
 # Changelog
 
+## v0.4.0 (2026-04-11)
+
+### Documentation
+
+- Add Example test functions for all 5 packages (visible in `go doc`)
+- Add `examples/workflow/` — complete guard → LLM → strip → jsonfix → validate pipeline
+- Restructure `docs/` into `docs/en/` and `docs/ja/`
+- Add English RFP document
+- Add Implementation Notes to RFP (plan vs reality)
+- Sync all documentation with code after security review
+
+### Security
+
+- guard: increase nonce from 4 bytes (32-bit) to 16 bytes (128-bit)
+- backoff: clamp negative attempt values to 0
+- backoff: document intentional use of math/rand
+- jsonfix: add memory usage note for large inputs
+
+### Fixes
+
+- jsonfix: handle unescaped double quotes in strings (look-ahead heuristic)
+- jsonfix: handle double-escaped JSON strings (`{\"key\": \"value\"}`)
+- validate: fix doc comment
+- json-repair MIT license attribution added to LICENSE and parser.go
+
 ## v0.3.2 (2026-04-11)
 
 ### Features

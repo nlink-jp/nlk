@@ -85,9 +85,18 @@ func (p *parser) atEnd() bool {
 // --- Whitespace and comment handling ---
 
 func (p *parser) skipWhitespace() {
-	for !p.atEnd() && unicode.IsSpace(p.peek()) {
+	for !p.atEnd() && isJSONSpace(p.peek()) {
 		p.advance()
 	}
+}
+
+// isJSONSpace reports whether r is whitespace including zero-width Unicode
+// spaces that unicode.IsSpace does not cover (U+200B, U+FEFF, U+180E).
+func isJSONSpace(r rune) bool {
+	if unicode.IsSpace(r) {
+		return true
+	}
+	return r == '\u200B' || r == '\uFEFF' || r == '\u180E'
 }
 
 func (p *parser) skipWhitespaceAndComments() {
@@ -155,7 +164,13 @@ func (p *parser) skipNonJSON() {
 		ch := p.peek()
 
 		// Unambiguous JSON structure starts.
-		if ch == '{' || ch == '[' || ch == '(' {
+		if ch == '{' || ch == '[' {
+			return
+		}
+
+		// Parenthesis: only treat as JSON start (tuple) if the content
+		// looks like a value list, not prose like "(some note):".
+		if ch == '(' && p.looksLikeTuple() {
 			return
 		}
 
@@ -454,13 +469,58 @@ func (p *parser) parseString(quote rune) {
 
 func (p *parser) peekAheadSkipSpace(offset int) rune {
 	i := p.pos + offset
-	for i < len(p.input) && unicode.IsSpace(p.input[i]) {
+	for i < len(p.input) && isJSONSpace(p.input[i]) {
 		i++
 	}
 	if i >= len(p.input) {
 		return 0
 	}
 	return p.input[i]
+}
+
+// looksLikeTuple peeks inside a '(' to decide whether it starts a
+// Python-style tuple (values separated by commas) or is just prose
+// parentheses like "(some note):".
+// Returns true only if the content after '(' starts with a JSON value
+// indicator: quote, digit, '{', '[', or a known literal.
+func (p *parser) looksLikeTuple() bool {
+	i := p.pos + 1 // skip '('
+	for i < len(p.input) && isJSONSpace(p.input[i]) {
+		i++
+	}
+	if i >= len(p.input) {
+		return false
+	}
+	ch := p.input[i]
+	// Starts with a quote, digit, brace, bracket, or another tuple.
+	if ch == '"' || ch == '\'' || ch == '{' || ch == '[' || ch == '(' {
+		return true
+	}
+	if ch == '-' || ch == '.' || (ch >= '0' && ch <= '9') {
+		return true
+	}
+	// Check for true/false/null/none literals.
+	remaining := p.input[i:]
+	for _, lit := range []string{"true", "false", "null", "none", "True", "False", "None", "NULL"} {
+		lr := []rune(lit)
+		if len(remaining) >= len(lr) {
+			match := true
+			for j, r := range lr {
+				if remaining[j] != r {
+					match = false
+					break
+				}
+			}
+			if match {
+				// Ensure complete token.
+				end := i + len(lr)
+				if end >= len(p.input) || !unicode.IsLetter(p.input[end]) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 // --- Unquoted value parsing ---

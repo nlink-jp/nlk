@@ -663,3 +663,104 @@ Please let me know if you need more details.`
 		t.Errorf("expected true, got %v", m["is_suspicious"])
 	}
 }
+
+// --- Zero-width space handling ---
+
+func TestZeroWidthSpace(t *testing.T) {
+	// U+200B (zero-width space) around structural characters.
+	input := "{\u200B\"key\"\u200B:\u200B\"value\"\u200B}"
+	got := mustExtract(t, "zero-width space", input)
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("not valid JSON: %v\ngot: %s", err, got)
+	}
+	if m["key"] != "value" {
+		t.Errorf("expected value, got %v", m["key"])
+	}
+}
+
+func TestBOM(t *testing.T) {
+	// U+FEFF (BOM / zero-width no-break space) as leading character.
+	input := "\uFEFF{\"key\": \"value\"}"
+	got := mustExtract(t, "BOM", input)
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("not valid JSON: %v\ngot: %s", err, got)
+	}
+	if m["key"] != "value" {
+		t.Errorf("expected value, got %v", m["key"])
+	}
+}
+
+func TestMongolianVowelSeparator(t *testing.T) {
+	// U+180E (Mongolian vowel separator).
+	input := "{\u180E\"key\":\u180E\"value\"}"
+	got := mustExtract(t, "mongolian vowel separator", input)
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("not valid JSON: %v\ngot: %s", err, got)
+	}
+}
+
+// --- Parenthesized prose should not hijack JSON ---
+
+func TestParenthesizedProseBeforeJSON(t *testing.T) {
+	input := "(some clarification):\n{\"key\": \"value\"}"
+	got := mustExtract(t, "paren prose before json", input)
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("not valid JSON: %v\ngot: %s", err, got)
+	}
+	if m["key"] != "value" {
+		t.Errorf("expected value, got %v", m["key"])
+	}
+}
+
+func TestParenthesizedProseBeforeFencedJSON(t *testing.T) {
+	input := "(note: this is important):\n```json\n{\"result\": \"ok\"}\n```"
+	got := mustExtract(t, "paren prose before fenced json", input)
+	var m map[string]any
+	if err := json.Unmarshal([]byte(got), &m); err != nil {
+		t.Fatalf("not valid JSON: %v\ngot: %s", err, got)
+	}
+	if m["result"] != "ok" {
+		t.Errorf("expected ok, got %v", m["result"])
+	}
+}
+
+func TestTupleStillWorks(t *testing.T) {
+	// Actual Python tuple should still be parsed.
+	input := `("a", "b", "c")`
+	got := mustExtract(t, "tuple still works", input)
+	var arr []string
+	if err := json.Unmarshal([]byte(got), &arr); err != nil {
+		t.Fatalf("not valid JSON array: %v\ngot: %s", err, got)
+	}
+	if len(arr) != 3 || arr[0] != "a" {
+		t.Errorf("expected [a,b,c], got %v", arr)
+	}
+}
+
+func TestTupleWithNumbers(t *testing.T) {
+	input := `(1, 2, 3)`
+	got := mustExtract(t, "tuple with numbers", input)
+	var arr []any
+	if err := json.Unmarshal([]byte(got), &arr); err != nil {
+		t.Fatalf("not valid JSON array: %v\ngot: %s", err, got)
+	}
+	if len(arr) != 3 {
+		t.Errorf("expected 3 elements, got %d", len(arr))
+	}
+}
+
+func TestTupleWithBooleans(t *testing.T) {
+	input := `(true, false, null)`
+	got := mustExtract(t, "tuple with booleans", input)
+	var arr []any
+	if err := json.Unmarshal([]byte(got), &arr); err != nil {
+		t.Fatalf("not valid JSON array: %v\ngot: %s", err, got)
+	}
+	if len(arr) != 3 {
+		t.Errorf("expected 3 elements, got %d", len(arr))
+	}
+}

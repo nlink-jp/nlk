@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.5.1 (2026-04-12)
+
+### Fixes
+
+- jsonfix: handle zero-width Unicode spaces (U+200B, U+FEFF, U+180E) as whitespace
+- jsonfix: skip prose parentheses like `(note):` instead of treating them as tuple starts
+
 ## v0.5.0 (2026-04-12)
 
 ### Security

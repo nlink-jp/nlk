@@ -227,6 +227,88 @@ The URL looks suspicious.
 	}
 }
 
+// --- Inline code-span skip (v0.5.2 fix) ---
+//
+// LLMs that EXPLAIN the literal think tag — common when the user
+// asks "what does <think> mean?" — wrap the tag in backticks for
+// markdown inline code. Without the code-span check, the
+// unclosed-tag rule strips the literal `<think>` reference and
+// everything after it, truncating the explanation mid-sentence.
+
+func TestThinkTagsInsideInlineCodeSpan(t *testing.T) {
+	input := "結論から申し上げますと、`<think>` は内部思考マーカーで、ユーザーには見せません。"
+	got := ThinkTags(input)
+	want := input
+	if got != want {
+		t.Errorf("inline code-span <think> should be preserved as literal:\n  got:  %q\n  want: %q", got, want)
+	}
+}
+
+func TestThinkTagsInsideInlineCodeSpanMultiOccurrence(t *testing.T) {
+	// Mixed: one in code span, one a real thinking block.
+	// Tag-pair removal preserves the surrounding newlines on both
+	// sides (existing behaviour, not affected by this fix).
+	input := "Note: `<think>` is the marker.\n<think>actual reasoning</think>\nFinal answer."
+	got := ThinkTags(input)
+	want := "Note: `<think>` is the marker.\n\nFinal answer."
+	if got != want {
+		t.Errorf("got:  %q\nwant: %q", got, want)
+	}
+}
+
+func TestThinkTagsCodeSpanOnDifferentLine(t *testing.T) {
+	// Backtick on a previous line should NOT count — code spans
+	// don't cross newlines in the simplified model. Surrounding
+	// newlines around the removed tag pair are preserved.
+	input := "Some `inline` text on line 1.\n<think>real reasoning</think>\nResult."
+	got := ThinkTags(input)
+	want := "Some `inline` text on line 1.\n\nResult."
+	if got != want {
+		t.Errorf("got:  %q\nwant: %q", got, want)
+	}
+}
+
+func TestThinkTagsCodeSpanWithUnclosedTag(t *testing.T) {
+	// The realistic shell-agent failure: model writes `<think>`
+	// inside a backtick span, then continues the sentence. Without
+	// the code-span check, everything after the literal `<think>`
+	// gets stripped under the unclosed-tag rule.
+	input := "ご質問ありがとうございます。\n\n結論から申し上げますと、`<think>` は内部思考マーカーで、ユーザーには見せません。詳しい説明はこちら…"
+	got := ThinkTags(input)
+	want := input
+	if got != want {
+		t.Errorf("got:  %q\nwant: %q", got, want)
+	}
+}
+
+func TestIsInsideInlineCodeSpan(t *testing.T) {
+	cases := []struct {
+		text string
+		pos  int
+		want bool
+		desc string
+	}{
+		{"hello `<think>` world", 7, true, "after open backtick"},
+		{"hello `<think>` world", 16, false, "after close backtick"},
+		{"normal text", 5, false, "no backticks"},
+		// Three backticks before pos 5 (positions 0, 2, 4) →
+		// odd count → currently inside the second span.
+		{"`a` `<think>`", 5, true, "inside second span (third backtick)"},
+		// Five backticks before pos 11 (positions 0, 2, 4, ...
+		// wait, let me recount: ` a ` ` < t h i n k > ` — at
+		// pos 12 we'd be after the closing backtick. Let me use
+		// a clearer example below instead.
+		{"line1\n`<think>`", 7, true, "code span on new line"},
+		{"`code` line1\n<think>", 13, false, "backtick on previous line doesn't carry"},
+	}
+	for _, c := range cases {
+		got := isInsideInlineCodeSpan(c.text, c.pos)
+		if got != c.want {
+			t.Errorf("[%s] isInsideInlineCodeSpan(%q, %d) = %v, want %v", c.desc, c.text, c.pos, got, c.want)
+		}
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && containsStr(s, substr)
 }

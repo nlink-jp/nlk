@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.5.2 (2026-05-03)
+
+### Fixes
+
+- strip: skip `<tag>` occurrences inside markdown inline-code spans (single-backtick on the same line). Previously, an LLM response that wrote ``` `<think>` ``` to refer to the literal tag — common when explaining what the tag means — was treated as an unclosed thinking block and everything after it was stripped. Now only real thinking-tag emissions are removed; literal references in code spans are preserved. Triple-backtick fenced blocks and HTML `<code>` are intentionally not modelled — add when a real symptom motivates it.
+
 ## v0.5.1 (2026-04-12)
 
 ### Fixes
